@@ -16,7 +16,6 @@ export default function FilterBar({ filters, onFilterChange }) {
   const [search, setSearch] = useState(filters.search);
   const [cashInput, setCashInput] = useState(filters.cashStack ? formatNum(filters.cashStack) : '');
 
-  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       if (search !== filters.search) {
@@ -35,7 +34,6 @@ export default function FilterBar({ filters, onFilterChange }) {
 
     const match = cashInput.trim().match(/^([\d.,]+)\s*([kmb])?$/i);
     if (!match) {
-      // Fallback if they typed something weird, just try to parse a float
       const parsed = parseFloat(cashInput.replace(/,/g, ''));
       const val = !isNaN(parsed) && parsed > 0 ? parsed : 0;
       onFilterChange({ ...filters, cashStack: val });
@@ -70,7 +68,7 @@ export default function FilterBar({ filters, onFilterChange }) {
 
   return (
     <div className="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-xl p-6 mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6">
 
         {/* Search */}
         <div className="flex flex-col justify-center lg:col-span-1">
@@ -81,7 +79,7 @@ export default function FilterBar({ filters, onFilterChange }) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="e.g. Abyssal whip"
+              placeholder="e.g. whip"
               className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-amber-500 transition-colors"
             />
           </div>
@@ -107,7 +105,7 @@ export default function FilterBar({ filters, onFilterChange }) {
         {/* Min Margin */}
         <div className="flex flex-col lg:col-span-1">
           <label className="text-sm text-gray-400 mb-2 flex justify-between">
-            <span>Min Margin (GP)</span>
+            <span>Min Margin</span>
             <span className="text-amber-400 font-medium">{formatNum(filters.minMargin)}</span>
           </label>
           <input
@@ -121,7 +119,7 @@ export default function FilterBar({ filters, onFilterChange }) {
         {/* Min ROI */}
         <div className="flex flex-col lg:col-span-1">
           <label className="text-sm text-gray-400 mb-2 flex justify-between">
-            <span>Min ROI (%)</span>
+            <span>Min ROI</span>
             <span className="text-amber-400 font-medium">{filters.minRoi}%</span>
           </label>
           <input
@@ -149,6 +147,30 @@ export default function FilterBar({ filters, onFilterChange }) {
           <div className="flex justify-between text-xs text-gray-600 mt-1">
             <span>Any</span>
             <span>10k+</span>
+          </div>
+        </div>
+
+        {/* Max Fill Time */}
+        <div className="flex flex-col lg:col-span-1">
+          <label className="text-sm text-gray-400 mb-2 flex justify-between">
+            <span>Max Fill Time</span>
+            <span className="text-amber-400 font-medium">
+              {filters.maxFillTime === 0 ? 'Any' : `< ${filters.maxFillTime} hr`}
+            </span>
+          </label>
+          <input
+            type="range" min="0" max="3" step="1"
+            value={filters.maxFillTime === 4 ? 3 : filters.maxFillTime}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              const hrs = val === 0 ? 0 : val === 1 ? 1 : val === 2 ? 2 : 4;
+              onFilterChange({ ...filters, maxFillTime: hrs });
+            }}
+            className="w-full mt-2"
+          />
+          <div className="flex justify-between text-xs text-gray-600 mt-1">
+            <span>Any</span>
+            <span>&lt;4h</span>
           </div>
         </div>
 

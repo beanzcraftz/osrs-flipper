@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 function formatNum(num) {
+  if (num === null || num === undefined) return '0';
   return new Intl.NumberFormat().format(num);
 }
 
@@ -11,16 +12,18 @@ function formatVol(v) {
   return v.toString();
 }
 
+function formatFill(hrs) {
+  if (hrs === 0) return 'Instant';
+  if (hrs < 1) return '<1 hr';
+  if (hrs > 24) return '>24h';
+  return `${hrs.toFixed(1)}h`;
+}
+
 export default function ItemTable({ items, loading, cashStack = 0 }) {
-  const [sortConfig, setSortConfig] = useState({ key: 'dynamic_profit', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'dynamicProfit', direction: 'desc' });
   const [copiedId, setCopiedId] = useState(null);
 
   const getVal = (item, key) => {
-    if (key === 'dynamic_profit') {
-      const limit = item.buy_limit || 0;
-      const affordableVol = cashStack > 0 ? Math.min(limit, Math.floor(cashStack / (item.buy_price || 1))) : limit;
-      return (item.margin || 0) * affordableVol;
-    }
     return item[key] !== undefined && item[key] !== null ? item[key] : 0;
   };
 
@@ -60,7 +63,7 @@ export default function ItemTable({ items, loading, cashStack = 0 }) {
         <table className="w-full text-left">
           <thead className="bg-gray-900">
             <tr>
-              {['Icon','Name','Buy Price','Sell Price','Margin','ROI %','Vol/hr','Limit','Dyn. Profit'].map(h => (
+              {['Icon','Name','Buy Price','Sell Price','Margin','ROI %','Vol/hr','Limit','Fill Time','Dyn. Profit'].map(h => (
                 <th key={h} className="p-4 text-gray-400 font-medium text-sm">{h}</th>
               ))}
             </tr>
@@ -68,7 +71,7 @@ export default function ItemTable({ items, loading, cashStack = 0 }) {
           <tbody>
             {[...Array(5)].map((_, i) => (
               <tr key={i} className="border-t border-gray-800 animate-pulse">
-                {[...Array(9)].map((_, j) => (
+                {[...Array(10)].map((_, j) => (
                   <td key={j} className="p-4"><div className="h-4 bg-gray-800 rounded w-16"></div></td>
                 ))}
               </tr>
@@ -103,7 +106,8 @@ export default function ItemTable({ items, loading, cashStack = 0 }) {
               {col('ROI %', 'roi')}
               {col('Vol/hr', 'volume_1h')}
               {col(cashStack > 0 ? 'Affordable / Limit' : 'Limit', 'buy_limit')}
-              {col('Dyn. Profit', 'dynamic_profit', 'text-amber-400')}
+              {col('Fill Time', 'estFillHours')}
+              {col('Dyn. Profit', 'dynamicProfit', 'text-amber-400')}
             </tr>
           </thead>
           <tbody>
@@ -111,8 +115,9 @@ export default function ItemTable({ items, loading, cashStack = 0 }) {
               const roi = item.roi || 0;
               const margin = item.margin || 0;
               const limit = item.buy_limit || 0;
-              const affordableVol = cashStack > 0 ? Math.min(limit, Math.floor(cashStack / (item.buy_price || 1))) : limit;
-              const dynamicProfit = margin * affordableVol;
+              const affordableVol = item.affordableVol || 0;
+              const dynamicProfit = item.dynamicProfit || 0;
+              const estFill = item.estFillHours || 0;
               const vol = item.volume_1h || 0;
 
               // Freshness calculation
@@ -190,6 +195,7 @@ export default function ItemTable({ items, loading, cashStack = 0 }) {
                       formatNum(limit)
                     )}
                   </td>
+                  <td className="p-4 text-gray-400 font-medium">{formatFill(estFill)}</td>
                   <td className="p-4 text-emerald-400 font-bold text-lg">{formatNum(dynamicProfit)}</td>
                 </tr>
               );
