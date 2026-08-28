@@ -1,0 +1,26 @@
+services:
+  backend:
+    build: ./backend
+    container_name: osrs-flipper-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/data:/app/data
+    restart: unless-stopped
+    networks:
+      - flipper-net
+
+  frontend:
+    build: ./frontend
+    container_name: osrs-flipper-ui
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - flipper-net
+
+networks:
+  flipper-net:
+    driver: bridge
