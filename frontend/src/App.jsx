@@ -10,7 +10,8 @@ function App() {
     minRoi: 0,
     minVolume: 0,
     search: '',
-    refreshInterval: 5
+    refreshInterval: 5,
+    cashStack: 0 // 0 = unlimited
   });
 
   const { items, totalCount, loading, error, lastUpdated } = useItems({
@@ -50,7 +51,7 @@ function App() {
             </span>
             <span className="transform transition-transform group-open:rotate-180 text-gray-400">▼</span>
           </summary>
-          <ItemTable items={f2pItems} loading={loading} />
+          <ItemTable items={f2pItems} loading={loading} cashStack={filters.cashStack} />
         </details>
 
         <details open className="group mb-6">
@@ -61,7 +62,7 @@ function App() {
             </span>
             <span className="transform transition-transform group-open:rotate-180 text-gray-400">▼</span>
           </summary>
-          <ItemTable items={p2pItems} loading={loading} />
+          <ItemTable items={p2pItems} loading={loading} cashStack={filters.cashStack} />
         </details>
       </main>
 

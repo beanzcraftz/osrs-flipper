@@ -7,9 +7,16 @@ function formatVolume(v) {
   return v.toString();
 }
 
+function formatNum(num) {
+  if (!num) return '';
+  return new Intl.NumberFormat().format(num);
+}
+
 export default function FilterBar({ filters, onFilterChange }) {
   const [search, setSearch] = useState(filters.search);
+  const [cashInput, setCashInput] = useState(filters.cashStack ? formatNum(filters.cashStack) : '');
 
+  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       if (search !== filters.search) {
@@ -19,14 +26,35 @@ export default function FilterBar({ filters, onFilterChange }) {
     return () => clearTimeout(timer);
   }, [search, filters, onFilterChange]);
 
+  const handleCashBlur = () => {
+    let val = cashInput.toLowerCase().replace(/,/g, '');
+    let mult = 1;
+    if (val.endsWith('b')) { mult = 1000000000; val = val.slice(0, -1); }
+    else if (val.endsWith('m')) { mult = 1000000; val = val.slice(0, -1); }
+    else if (val.endsWith('k')) { mult = 1000; val = val.slice(0, -1); }
+
+    const parsed = parseFloat(val) * mult;
+    if (!isNaN(parsed) && parsed > 0) {
+        onFilterChange({ ...filters, cashStack: parsed });
+        setCashInput(formatNum(parsed));
+    } else {
+        onFilterChange({ ...filters, cashStack: 0 });
+        setCashInput('');
+    }
+  };
+
+  const handleCashKey = (e) => {
+    if (e.key === 'Enter') e.target.blur();
+  };
+
   const volIndex = VOLUME_STEPS.indexOf(filters.minVolume) === -1 ? 0 : VOLUME_STEPS.indexOf(filters.minVolume);
 
   return (
     <div className="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-xl p-6 mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
 
         {/* Search */}
-        <div className="flex flex-col justify-center">
+        <div className="flex flex-col justify-center lg:col-span-1">
           <label className="text-sm text-gray-400 mb-2">Search Items</label>
           <div className="relative">
             <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">🔍</span>
@@ -40,11 +68,28 @@ export default function FilterBar({ filters, onFilterChange }) {
           </div>
         </div>
 
+        {/* Cash Stack */}
+        <div className="flex flex-col justify-center lg:col-span-1">
+          <label className="text-sm text-gray-400 mb-2">Cash Stack (e.g. 10m)</label>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">💰</span>
+            <input
+              type="text"
+              value={cashInput}
+              onChange={(e) => setCashInput(e.target.value)}
+              onBlur={handleCashBlur}
+              onKeyDown={handleCashKey}
+              placeholder="0 = Unlimited"
+              className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-amber-500 transition-colors"
+            />
+          </div>
+        </div>
+
         {/* Min Margin */}
-        <div className="flex flex-col">
+        <div className="flex flex-col lg:col-span-1">
           <label className="text-sm text-gray-400 mb-2 flex justify-between">
             <span>Min Margin (GP)</span>
-            <span className="text-amber-400 font-medium">{new Intl.NumberFormat().format(filters.minMargin)}</span>
+            <span className="text-amber-400 font-medium">{formatNum(filters.minMargin)}</span>
           </label>
           <input
             type="range" min="0" max="50000" step="100"
@@ -55,7 +100,7 @@ export default function FilterBar({ filters, onFilterChange }) {
         </div>
 
         {/* Min ROI */}
-        <div className="flex flex-col">
+        <div className="flex flex-col lg:col-span-1">
           <label className="text-sm text-gray-400 mb-2 flex justify-between">
             <span>Min ROI (%)</span>
             <span className="text-amber-400 font-medium">{filters.minRoi}%</span>
@@ -69,7 +114,7 @@ export default function FilterBar({ filters, onFilterChange }) {
         </div>
 
         {/* Min Volume (1h) */}
-        <div className="flex flex-col">
+        <div className="flex flex-col lg:col-span-1">
           <label className="text-sm text-gray-400 mb-2 flex justify-between">
             <span>Min Vol/hr</span>
             <span className="text-amber-400 font-medium">
@@ -89,7 +134,7 @@ export default function FilterBar({ filters, onFilterChange }) {
         </div>
 
         {/* Auto Refresh */}
-        <div className="flex flex-col">
+        <div className="flex flex-col lg:col-span-1">
           <label className="text-sm text-gray-400 mb-2 flex justify-between">
             <span>Auto-Refresh</span>
             <span className="text-amber-400 font-medium">{filters.refreshInterval} min</span>
