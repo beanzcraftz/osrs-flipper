@@ -30,12 +30,23 @@ class PriceSnapshot(Base):
     high_time = Column(Integer, nullable=True)
     low = Column(Integer, nullable=True)
     low_time = Column(Integer, nullable=True)
+    # 1h volume data — total items traded in the last hour (both sides)
+    volume_1h = Column(Integer, nullable=True, default=0)
     fetched_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 async def init_db():
     os.makedirs("./data", exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add volume_1h column if upgrading from older schema (safe no-op if it exists)
+        try:
+            await conn.execute(
+                __import__('sqlalchemy').text(
+                    "ALTER TABLE price_snapshots ADD COLUMN volume_1h INTEGER DEFAULT 0"
+                )
+            )
+        except Exception:
+            pass  # Column already exists
 
 async def get_session():
     async with async_session_factory() as session:

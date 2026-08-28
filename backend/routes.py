@@ -10,10 +10,11 @@ router = APIRouter(prefix="/api")
 async def api_get_items(
     min_margin: int = 0,
     min_roi: float = 0.0,
+    min_volume: int = 0,
     search: str = None,
     session: AsyncSession = Depends(get_session)
 ):
-    return await get_merged_items(session, min_margin, min_roi, search)
+    return await get_merged_items(session, min_margin, min_roi, min_volume, search)
 
 @router.get("/items/{item_id}/history")
 async def api_get_item_history(item_id: int, session: AsyncSession = Depends(get_session)):

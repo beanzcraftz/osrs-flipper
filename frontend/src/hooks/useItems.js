@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchItems } from '../api';
 
-export function useItems({ minMargin, minRoi, search, pollInterval = 30000 }) {
+export function useItems({ minMargin, minRoi, minVolume, search, pollInterval = 300000 }) {
   const [items, setItems] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -11,7 +11,7 @@ export function useItems({ minMargin, minRoi, search, pollInterval = 30000 }) {
 
   const load = useCallback(async () => {
     try {
-      const data = await fetchItems({ minMargin, minRoi, search });
+      const data = await fetchItems({ minMargin, minRoi, minVolume, search });
       setItems(data);
       setTotalCount(data.length);
       setLastUpdated(new Date());
@@ -21,13 +21,15 @@ export function useItems({ minMargin, minRoi, search, pollInterval = 30000 }) {
     } finally {
       setLoading(false);
     }
-  }, [minMargin, minRoi, search]);
+  }, [minMargin, minRoi, minVolume, search]);
 
   useEffect(() => {
     setLoading(true);
     load();
-    intervalRef.current = setInterval(load, pollInterval);
-    return () => clearInterval(intervalRef.current);
+    if (pollInterval > 0) {
+      intervalRef.current = setInterval(load, pollInterval);
+      return () => clearInterval(intervalRef.current);
+    }
   }, [load, pollInterval]);
 
   return { items, totalCount, loading, error, lastUpdated };
