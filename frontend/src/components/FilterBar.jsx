@@ -27,20 +27,39 @@ export default function FilterBar({ filters, onFilterChange }) {
   }, [search, filters, onFilterChange]);
 
   const handleCashBlur = () => {
-    let val = cashInput.toLowerCase().replace(/,/g, '');
-    let mult = 1;
-    if (val.endsWith('b')) { mult = 1000000000; val = val.slice(0, -1); }
-    else if (val.endsWith('m')) { mult = 1000000; val = val.slice(0, -1); }
-    else if (val.endsWith('k')) { mult = 1000; val = val.slice(0, -1); }
-
-    const parsed = parseFloat(val) * mult;
-    if (!isNaN(parsed) && parsed > 0) {
-        onFilterChange({ ...filters, cashStack: parsed });
-        setCashInput(formatNum(parsed));
-    } else {
-        onFilterChange({ ...filters, cashStack: 0 });
-        setCashInput('');
+    if (!cashInput || cashInput.trim() === '') {
+      onFilterChange({ ...filters, cashStack: 0 });
+      setCashInput('');
+      return;
     }
+
+    const match = cashInput.trim().match(/^([\d.,]+)\s*([kmb])?$/i);
+    if (!match) {
+      // Fallback if they typed something weird, just try to parse a float
+      const parsed = parseFloat(cashInput.replace(/,/g, ''));
+      const val = !isNaN(parsed) && parsed > 0 ? parsed : 0;
+      onFilterChange({ ...filters, cashStack: val });
+      setCashInput(val > 0 ? val.toLocaleString() : '');
+      return;
+    }
+
+    const numStr = match[1].replace(/,/g, '');
+    const suffix = match[2] ? match[2].toLowerCase() : '';
+    let num = parseFloat(numStr);
+
+    if (isNaN(num) || num <= 0) {
+      onFilterChange({ ...filters, cashStack: 0 });
+      setCashInput('');
+      return;
+    }
+
+    if (suffix === 'b') num *= 1000000000;
+    else if (suffix === 'm') num *= 1000000;
+    else if (suffix === 'k') num *= 1000;
+
+    const finalInt = Math.floor(num);
+    onFilterChange({ ...filters, cashStack: finalInt });
+    setCashInput(finalInt.toLocaleString());
   };
 
   const handleCashKey = (e) => {
