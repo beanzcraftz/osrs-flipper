@@ -95,6 +95,13 @@ class CharacterNote(Base):
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class CharacterQuest(Base):
+    __tablename__ = 'character_quests'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    character_id = Column(Integer, ForeignKey('characters.id'), index=True)
+    quest_name = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 async def init_db():
     os.makedirs('./data', exist_ok=True)
     async with engine.begin() as conn:

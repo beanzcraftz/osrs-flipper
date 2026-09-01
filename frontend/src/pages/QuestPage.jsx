@@ -15,6 +15,9 @@ export default function QuestPage() {
   const [activeChar, setActiveChar] = useState(null);
   const [quests, setQuests] = useState([]);
   const [filter, setFilter] = useState('all'); // all, ready, locked
+  
+  const [showTodo, setShowTodo] = useState(true);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     fetch('/api/quests')
@@ -23,16 +26,39 @@ export default function QuestPage() {
       .catch(console.error);
   }, []);
 
-  useEffect(() => {
-    if (activeCharacterId) {
-      fetch(`/api/characters/${activeCharacterId}`)
-        .then(res => res.json())
-        .then(data => setActiveChar(data))
-        .catch(console.error);
-    } else {
+  const fetchActiveChar = () => {
+    if (!activeCharacterId) {
       setActiveChar(null);
+      return;
     }
+    fetch(`/api/characters/${activeCharacterId}`)
+      .then(res => res.json())
+      .then(data => setActiveChar(data))
+      .catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchActiveChar();
   }, [activeCharacterId]);
+
+  const toggleQuest = async (questName) => {
+    if (!activeChar) return;
+    
+    // Optimistic update
+    const isCompleted = activeChar.completed_quests?.includes(questName);
+    const newCompleted = isCompleted 
+      ? activeChar.completed_quests.filter(q => q !== questName)
+      : [...(activeChar.completed_quests || []), questName];
+      
+    setActiveChar({ ...activeChar, completed_quests: newCompleted });
+
+    await fetch(`/api/characters/${activeChar.id}/quests/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quest_name: questName })
+    });
+    fetchActiveChar(); // Sync just in case
+  };
 
   const processedQuests = useMemo(() => {
     if (!activeChar) return [];
@@ -49,15 +75,21 @@ export default function QuestPage() {
         }
       }
       
-      return { ...quest, ready, missing };
+      const isCompleted = activeChar.completed_quests?.includes(quest.name) || false;
+      return { ...quest, ready, missing, isCompleted };
     });
   }, [quests, activeChar]);
 
-  const filteredQuests = useMemo(() => {
-    if (filter === 'ready') return processedQuests.filter(q => q.ready);
-    if (filter === 'locked') return processedQuests.filter(q => !q.ready);
-    return processedQuests;
+  const todoQuests = useMemo(() => {
+    let list = processedQuests.filter(q => !q.isCompleted);
+    if (filter === 'ready') list = list.filter(q => q.ready);
+    if (filter === 'locked') list = list.filter(q => !q.ready);
+    return list;
   }, [processedQuests, filter]);
+
+  const completedQuests = useMemo(() => {
+    return processedQuests.filter(q => q.isCompleted);
+  }, [processedQuests]);
 
   if (!activeCharacterId) {
     return (
@@ -68,13 +100,54 @@ export default function QuestPage() {
     );
   }
 
+  const renderQuestCard = (quest, i) => (
+    <div key={i} className={`bg-gray-900 border rounded-xl p-5 ${quest.isCompleted ? 'border-blue-500/30' : (quest.ready ? 'border-emerald-500/30' : 'border-red-500/30')}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <input 
+            type="checkbox" 
+            checked={quest.isCompleted} 
+            onChange={() => toggleQuest(quest.name)}
+            className="w-5 h-5 rounded border-gray-600 text-blue-500 focus:ring-blue-500 cursor-pointer"
+          />
+          <h3 className={`font-bold text-lg ${quest.isCompleted ? 'text-gray-400 line-through' : 'text-white'}`}>{quest.name}</h3>
+        </div>
+        {!quest.isCompleted && (
+          quest.ready ? (
+            <span className="text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">Ready</span>
+          ) : (
+            <span className="text-red-400 bg-red-500/10 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">Locked</span>
+          )
+        )}
+      </div>
+
+      {Object.keys(quest.reqs).length === 0 ? (
+        <p className="text-sm text-gray-500 ml-8">No skill requirements.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2 ml-8">
+          {Object.entries(quest.reqs).map(([skill, reqLevel]) => {
+            const current = activeChar.skills[skill] || 1;
+            const hasLevel = current >= reqLevel;
+            return (
+              <div key={skill} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border ${quest.isCompleted ? 'bg-gray-800/50 border-gray-700/50 text-gray-500' : (hasLevel ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-red-500/10 border-red-500/20 text-red-300')}`}>
+                <span className={quest.isCompleted ? 'opacity-50' : ''}>{SKILL_ICONS[skill]}</span>
+                <span className="capitalize">{skill}</span>
+                <span className="font-bold">{hasLevel ? reqLevel : `${current}/${reqLevel}`}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="pb-16 max-w-4xl">
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
           📜 Quest Tracker
         </h1>
-        <p className="text-gray-400 mt-1">Check your skill requirements for major OSRS quests.</p>
+        <p className="text-gray-400 mt-1">Track major OSRS quests and check your skill requirements.</p>
       </header>
 
       <div className="flex gap-2 mb-6 bg-gray-900 p-2 rounded-lg inline-flex border border-gray-800">
@@ -92,40 +165,46 @@ export default function QuestPage() {
         </button>
       </div>
 
-      <div className="space-y-4">
-        {filteredQuests.map((quest, i) => (
-          <div key={i} className={`bg-gray-900 border rounded-xl p-5 ${quest.ready ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-lg text-white">{quest.name}</h3>
-              {quest.ready ? (
-                <span className="text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">Ready</span>
-              ) : (
-                <span className="text-red-400 bg-red-500/10 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">Locked</span>
+      <div className="space-y-6">
+        {/* TO DO SECTION */}
+        <div className="bg-gray-950/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button 
+            onClick={() => setShowTodo(!showTodo)}
+            className="w-full flex items-center justify-between p-4 bg-gray-900 hover:bg-gray-800 transition-colors"
+          >
+            <h2 className="font-bold text-white text-lg">📝 To Do ({todoQuests.length})</h2>
+            <span className="text-gray-400">{showTodo ? '▼' : '▶'}</span>
+          </button>
+          
+          {showTodo && (
+            <div className="p-4 space-y-4">
+              {todoQuests.map((quest, i) => renderQuestCard(quest, i))}
+              {todoQuests.length === 0 && (
+                <p className="text-gray-500">No quests found in To Do for this filter.</p>
               )}
             </div>
+          )}
+        </div>
 
-            {Object.keys(quest.reqs).length === 0 ? (
-              <p className="text-sm text-gray-500">No skill requirements.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(quest.reqs).map(([skill, reqLevel]) => {
-                  const current = activeChar.skills[skill] || 1;
-                  const hasLevel = current >= reqLevel;
-                  return (
-                    <div key={skill} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border ${hasLevel ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-red-500/10 border-red-500/20 text-red-300'}`}>
-                      <span>{SKILL_ICONS[skill]}</span>
-                      <span className="capitalize">{skill}</span>
-                      <span className="font-bold">{hasLevel ? reqLevel : `${current}/${reqLevel}`}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ))}
-        {filteredQuests.length === 0 && (
-          <p className="text-gray-500">No quests found for this filter.</p>
-        )}
+        {/* COMPLETED SECTION */}
+        <div className="bg-gray-950/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button 
+            onClick={() => setShowCompleted(!showCompleted)}
+            className="w-full flex items-center justify-between p-4 bg-gray-900 hover:bg-gray-800 transition-colors"
+          >
+            <h2 className="font-bold text-white text-lg">✅ Completed ({completedQuests.length})</h2>
+            <span className="text-gray-400">{showCompleted ? '▼' : '▶'}</span>
+          </button>
+          
+          {showCompleted && (
+            <div className="p-4 space-y-4">
+              {completedQuests.map((quest, i) => renderQuestCard(quest, i))}
+              {completedQuests.length === 0 && (
+                <p className="text-gray-500">No completed quests yet.</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

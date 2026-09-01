@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_session, Character, CharacterGoal, CharacterNote, SKILLS
+from database import get_session, Character, CharacterGoal, CharacterNote, CharacterQuest, SKILLS
 
 router = APIRouter(prefix='/api/characters', tags=['characters'], redirect_slashes=False)
 
@@ -125,7 +125,42 @@ async def get_character(char_id: int, session: AsyncSession = Depends(get_sessio
         'id': n.id, 'content': n.content,
         'created_at': n.created_at.isoformat() if n.created_at else None,
     } for n in notes]
+    # Include completed quests
+    quests_result = await session.execute(
+        select(CharacterQuest.quest_name)
+        .where(CharacterQuest.character_id == char_id)
+    )
+    d['completed_quests'] = quests_result.scalars().all()
     return d
+
+class QuestToggleBody(BaseModel):
+    quest_name: str
+
+@router.post('/{char_id}/quests/toggle', status_code=200)
+async def toggle_quest(char_id: int, body: QuestToggleBody, session: AsyncSession = Depends(get_session)):
+    char = await session.get(Character, char_id)
+    if not char:
+        raise HTTPException(404, 'Character not found')
+    
+    # Check if exists
+    result = await session.execute(
+        select(CharacterQuest).where(
+            CharacterQuest.character_id == char_id,
+            CharacterQuest.quest_name == body.quest_name
+        )
+    )
+    quest = result.scalar_one_or_none()
+    
+    if quest:
+        await session.delete(quest)
+        completed = False
+    else:
+        new_quest = CharacterQuest(character_id=char_id, quest_name=body.quest_name)
+        session.add(new_quest)
+        completed = True
+        
+    await session.commit()
+    return {"quest_name": body.quest_name, "completed": completed}
 
 
 @router.put('/{char_id}')
