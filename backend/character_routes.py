@@ -5,7 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_session, Character, CharacterGoal, CharacterNote, SKILLS
 
-router = APIRouter(prefix='/api/characters', tags=['characters'])
+router = APIRouter(prefix='/api/characters', tags=['characters'], redirect_slashes=False)
+
 
 
 class CharacterCreate(BaseModel):

@@ -4,7 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_session, Character, SKILLS
 from skill_data import TRAINING_METHODS
 
-router = APIRouter(prefix='/api/bored', tags=['bored'])
+router = APIRouter(prefix='/api/bored', tags=['bored'], redirect_slashes=False)
+
 
 
 @router.get('/suggest/{char_id}')

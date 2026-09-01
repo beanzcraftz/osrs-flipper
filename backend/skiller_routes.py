@@ -5,7 +5,8 @@ from sqlalchemy.orm import aliased
 from database import get_session, PriceSnapshot, Item
 from skill_data import TRAINING_METHODS, xp_between, xp_for_level
 
-router = APIRouter(prefix='/api/skiller', tags=['skiller'])
+router = APIRouter(prefix='/api/skiller', tags=['skiller'], redirect_slashes=False)
+
 
 
 async def get_item_price(session: AsyncSession, item_id: int) -> dict | None:
