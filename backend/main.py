@@ -9,6 +9,7 @@ from routes import router
 from character_routes import router as character_router
 from skiller_routes import router as skiller_router
 from bored_routes import router as bored_router
+from quest_routes import router as quest_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -33,6 +34,7 @@ app.include_router(router)
 app.include_router(character_router)
 app.include_router(skiller_router)
 app.include_router(bored_router)
+app.include_router(quest_router)
 
 @app.get('/')
 async def root():

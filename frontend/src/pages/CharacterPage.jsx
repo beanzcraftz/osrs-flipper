@@ -27,7 +27,7 @@ function xpForLevel(level) {
   return Math.floor(xp / 4);
 }
 
-function ProgressBar({ current, target }) {
+export function ProgressBar({ current, target }) {
   const currentXP = xpForLevel(current);
   const targetXP = xpForLevel(target);
   const pct = targetXP > 0 ? Math.min(100, Math.round((currentXP / targetXP) * 100)) : 0;
