@@ -171,6 +171,7 @@ async def add_goal(char_id: int, body: GoalCreate, session: AsyncSession = Depen
     session.add(goal)
     await session.commit()
     await session.refresh(goal)
+    return {'id': goal.id, 'skill': goal.skill, 'current_level': goal.current_level,
             'target_level': goal.target_level, 'completed': goal.completed}
 
 
