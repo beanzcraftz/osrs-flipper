@@ -143,11 +143,19 @@ export default function QuestPage() {
 
   return (
     <div className="pb-16 max-w-4xl">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
-          📜 Quest Tracker
-        </h1>
-        <p className="text-gray-400 mt-1">Track major OSRS quests and check your skill requirements.</p>
+      <header className="mb-6 flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
+            📜 Quest Tracker
+          </h1>
+          <p className="text-gray-400 mt-1">Track major OSRS quests and check your skill requirements.</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Global Progress</p>
+          <p className="text-xl font-bold text-blue-400">
+            {completedQuests.length} <span className="text-gray-500 text-sm">/ {quests.length}</span>
+          </p>
+        </div>
       </header>
 
       <div className="flex gap-2 mb-6 bg-gray-900 p-2 rounded-lg inline-flex border border-gray-800">
