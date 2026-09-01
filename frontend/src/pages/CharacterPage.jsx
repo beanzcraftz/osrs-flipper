@@ -107,18 +107,35 @@ export default function CharacterPage() {
     }
   };
 
+  const [createError, setCreateError] = useState('');
+
   const handleCreate = async () => {
     if (!newName.trim()) return;
-    const res = await fetch('/api/characters', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName.trim(), slot: createSlot }),
-    });
-    if (res.ok) {
-      await refreshCharacters();
+    setCreateError('');
+    try {
+      const res = await fetch('/api/characters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim(), slot: createSlot }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `Error ${res.status}` }));
+        setCreateError(err.detail ?? 'Failed to create character');
+        return;
+      }
+      const newChar = await res.json();
+      // Close modal first
       setCreateSlot(null);
+      setCreateError('');
+      // Refresh list then immediately load the new character
+      await refreshCharacters();
+      setActiveCharacterId(newChar.id);
+      await fetchCharacterDetail(newChar.id);
+    } catch (e) {
+      setCreateError(e.message ?? 'Network error');
     }
   };
+
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this character? This cannot be undone.')) return;
@@ -199,15 +216,21 @@ export default function CharacterPage() {
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
               placeholder="Character name"
-              className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white mb-4 focus:outline-none focus:border-amber-500"
+              className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white mb-3 focus:outline-none focus:border-amber-500"
             />
+            {createError && (
+              <p className="text-red-400 text-xs mb-3 bg-red-500/10 border border-red-500/30 px-3 py-2 rounded-lg">
+                ⚠ {createError}
+              </p>
+            )}
             <div className="flex gap-3">
               <button onClick={handleCreate} className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-semibold py-2 rounded-lg text-sm transition-colors">Create</button>
-              <button onClick={() => setCreateSlot(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 py-2 rounded-lg text-sm transition-colors">Cancel</button>
+              <button onClick={() => { setCreateSlot(null); setCreateError(''); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 py-2 rounded-lg text-sm transition-colors">Cancel</button>
             </div>
           </div>
         </div>
       )}
+
 
       {/* Character slots */}
       <div className="grid grid-cols-3 gap-4 mb-8">
