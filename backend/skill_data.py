@@ -725,4 +725,22 @@ TRAINING_METHODS: list[dict] = [
         'input_items': [], 'output_items': [],
         'emoji': '🏠', 'bored_task': 'Complete 6 contracts in Mahogany Homes!',
     },
+
+    # ── SAILING ───────────────────────────────────────────────────────────────
+    {
+        'name': 'Sailboat Navigation',
+        'skill': 'sailing', 'level_req': 1, 'xp_per_action': 150.0,
+        'actions_per_hour': 200, 'members': True,
+        'notes': 'Basic sailboat navigation in shallow waters.',
+        'input_items': [], 'output_items': [],
+        'emoji': '⛵', 'bored_task': 'Chart some shallow waters with a basic sailboat!',
+    },
+    {
+        'name': 'Deep Sea Expeditions',
+        'skill': 'sailing', 'level_req': 50, 'xp_per_action': 1500.0,
+        'actions_per_hour': 30, 'members': True,
+        'notes': 'Embark on deep sea voyages. Great XP!',
+        'input_items': [], 'output_items': [],
+        'emoji': '⛵', 'bored_task': 'Lead a 30-minute deep sea expedition!',
+    },
 ]

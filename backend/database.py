@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, BigInteger, Text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, BigInteger, Text, Float
+
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base
 
@@ -14,7 +15,7 @@ SKILLS = [
     'attack', 'hitpoints', 'mining', 'strength', 'agility', 'smithing',
     'defence', 'herblore', 'fishing', 'ranged', 'thieving', 'cooking',
     'prayer', 'crafting', 'firemaking', 'magic', 'fletching', 'woodcutting',
-    'runecraft', 'slayer', 'farming', 'construction', 'hunter'
+    'runecraft', 'slayer', 'farming', 'construction', 'hunter', 'sailing'
 ]
 
 class Item(Base):
@@ -45,10 +46,10 @@ class Character(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     slot = Column(Integer, unique=True, nullable=False)  # 1, 2, or 3
     name = Column(String, nullable=False, default='New Character')
-    combat_level = Column(Integer, default=3)
+    combat_level = Column(Float, default=3.0)
     total_level = Column(Integer, default=32)
     current_gp = Column(BigInteger, default=0)
-    # 23 skills
+    # 24 skills
     attack = Column(Integer, default=1)
     hitpoints = Column(Integer, default=10)
     mining = Column(Integer, default=1)
@@ -72,6 +73,7 @@ class Character(Base):
     farming = Column(Integer, default=1)
     construction = Column(Integer, default=1)
     hunter = Column(Integer, default=1)
+    sailing = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -83,6 +85,7 @@ class CharacterGoal(Base):
     current_level = Column(Integer, nullable=False)
     target_level = Column(Integer, nullable=False)
     completed = Column(Boolean, default=False)
+    order_index = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class CharacterNote(Base):
@@ -96,11 +99,26 @@ async def init_db():
     os.makedirs('./data', exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Safe migration for volume_1h column on older DBs
         try:
             await conn.execute(
                 __import__('sqlalchemy').text(
                     'ALTER TABLE price_snapshots ADD COLUMN volume_1h INTEGER DEFAULT 0'
+                )
+            )
+        except Exception:
+            pass
+        try:
+            await conn.execute(
+                __import__('sqlalchemy').text(
+                    'ALTER TABLE characters ADD COLUMN sailing INTEGER DEFAULT 1'
+                )
+            )
+        except Exception:
+            pass
+        try:
+            await conn.execute(
+                __import__('sqlalchemy').text(
+                    'ALTER TABLE character_goals ADD COLUMN order_index INTEGER DEFAULT 0'
                 )
             )
         except Exception:

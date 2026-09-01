@@ -5,7 +5,7 @@ const SKILLS = [
   'attack','hitpoints','mining','strength','agility','smithing',
   'defence','herblore','fishing','ranged','thieving','cooking',
   'prayer','crafting','firemaking','magic','fletching','woodcutting',
-  'runecraft','slayer','farming','construction','hunter',
+  'runecraft','slayer','farming','construction','hunter','sailing'
 ];
 
 const SKILL_ICONS = {
@@ -14,7 +14,7 @@ const SKILL_ICONS = {
   fishing: '🎣', ranged: '🏹', thieving: '🦝', cooking: '🍳',
   prayer: '🙏', crafting: '🧵', firemaking: '🔥', magic: '🧙',
   fletching: '🏹', woodcutting: '🪓', runecraft: '🔮', slayer: '💀',
-  farming: '🌱', construction: '🏠', hunter: '🐾',
+  farming: '🌱', construction: '🏠', hunter: '🐾', sailing: '⛵'
 };
 
 function fmt(n) {

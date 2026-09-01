@@ -5,7 +5,7 @@ const SKILLS = [
   'attack','hitpoints','mining','strength','agility','smithing',
   'defence','herblore','fishing','ranged','thieving','cooking',
   'prayer','crafting','firemaking','magic','fletching','woodcutting',
-  'runecraft','slayer','farming','construction','hunter',
+  'runecraft','slayer','farming','construction','hunter','sailing'
 ];
 
 const SKILL_ICONS = {
@@ -14,7 +14,7 @@ const SKILL_ICONS = {
   fishing: '🎣', ranged: '🏹', thieving: '🦝', cooking: '🍳',
   prayer: '🙏', crafting: '🧵', firemaking: '🔥', magic: '🧙',
   fletching: '🏹', woodcutting: '🪓', runecraft: '🔮', slayer: '💀',
-  farming: '🌱', construction: '🏠', hunter: '🐾',
+  farming: '🌱', construction: '🏠', hunter: '🐾', sailing: '⛵'
 };
 
 function xpForLevel(level) {
@@ -149,18 +149,28 @@ export default function CharacterPage() {
   const handleSave = async () => {
     if (!selectedChar) return;
     setSaving(true);
-    const body = {};
-    ['name','combat_level','total_level','current_gp',...SKILLS].forEach(k => {
-      if (editForm[k] !== undefined) body[k] = editForm[k];
-    });
-    await fetch(`/api/characters/${selectedChar.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    await fetchCharacterDetail(selectedChar.id);
-    await refreshCharacters();
-    setSaving(false);
+    try {
+      const body = {};
+      ['name','combat_level','total_level','current_gp',...SKILLS].forEach(k => {
+        if (editForm[k] !== undefined) body[k] = editForm[k];
+      });
+      const res = await fetch(`/api/characters/${selectedChar.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `Error ${res.status}` }));
+        alert(`Failed to save: ${err.detail ?? 'Unknown error'}`);
+        return;
+      }
+      await fetchCharacterDetail(selectedChar.id);
+      await refreshCharacters();
+    } catch (e) {
+      alert(`Network error: ${e.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAddGoal = async () => {
@@ -196,8 +206,30 @@ export default function CharacterPage() {
 
   const slots = [1, 2, 3];
 
+  const handleMoveGoal = async (index, direction) => {
+    const activeGoals = selectedChar.goals.filter(g => !g.completed);
+    if (direction === -1 && index === 0) return;
+    if (direction === 1 && index === activeGoals.length - 1) return;
+    
+    const newGoals = [...activeGoals];
+    const temp = newGoals[index];
+    newGoals[index] = newGoals[index + direction];
+    newGoals[index + direction] = temp;
+    
+    // optimistic update
+    setSelectedChar(c => ({...c, goals: [...newGoals, ...c.goals.filter(g => g.completed)]}));
+    
+    await fetch(`/api/characters/${selectedChar.id}/goals/reorder`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goal_ids: newGoals.map(g => g.id) }),
+    });
+    await fetchCharacterDetail(selectedChar.id);
+  };
+
   return (
     <div className="pb-16">
+
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600">
           📋 Character Recorder
@@ -297,48 +329,65 @@ export default function CharacterPage() {
           {/* Goals + Notes column */}
           <div className="space-y-6">
             {/* Goals */}
-            <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-5">
-              <h2 className="font-bold text-white mb-4">🎯 Active Goals</h2>
+            <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-5 flex flex-col max-h-[600px]">
+              <h2 className="font-bold text-white mb-4 shrink-0">🎯 Active Goals</h2>
 
-              {selectedChar.goals?.filter(g => !g.completed).map(goal => (
-                <div key={goal.id} className="mb-4 last:mb-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-white capitalize">
-                      {SKILL_ICONS[goal.skill]} {goal.skill} {goal.current_level} → {goal.target_level}
-                    </span>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleCompleteGoal(goal.id, goal.completed)}
-                        className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">✓ Done</button>
-                      <button onClick={() => handleDeleteGoal(goal.id)}
-                        className="text-xs text-red-400/60 hover:text-red-400 transition-colors">✕</button>
+              <div className="overflow-y-auto flex-1 pr-2 space-y-4 min-h-[100px]">
+                {selectedChar.goals?.filter(g => !g.completed).map((goal, index) => (
+                  <div key={goal.id}>
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col">
+                          <button onClick={() => handleMoveGoal(index, -1)} className="text-gray-500 hover:text-white leading-none text-[10px]">▲</button>
+                          <button onClick={() => handleMoveGoal(index, 1)} className="text-gray-500 hover:text-white leading-none text-[10px]">▼</button>
+                        </div>
+                        <span className="text-sm font-medium text-white capitalize">
+                          {SKILL_ICONS[goal.skill]} {goal.skill} {goal.current_level} → {goal.target_level}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleCompleteGoal(goal.id, goal.completed)}
+                          className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">✓ Done</button>
+                        <button onClick={() => handleDeleteGoal(goal.id)}
+                          className="text-xs text-red-400/60 hover:text-red-400 transition-colors">✕</button>
+                      </div>
                     </div>
+                    <ProgressBar current={editForm[goal.skill] ?? goal.current_level} target={goal.target_level} />
                   </div>
-                  <ProgressBar current={editForm[goal.skill] ?? goal.current_level} target={goal.target_level} />
-                </div>
-              ))}
-
-              {selectedChar.goals?.filter(g => !g.completed).length === 0 && (
-                <p className="text-gray-500 text-sm mb-4">No active goals yet.</p>
-              )}
+                ))}
+                
+                {selectedChar.goals?.filter(g => !g.completed).length === 0 && (
+                  <p className="text-gray-500 text-sm">No active goals yet.</p>
+                )}
+              </div>
 
               {/* Add goal form */}
-              <div className="mt-4 pt-4 border-t border-gray-800">
-                <p className="text-xs text-gray-400 mb-2">Add Goal</p>
-                <div className="flex gap-2 flex-wrap">
-                  <select value={newGoal.skill} onChange={e => setNewGoal(g => ({ ...g, skill: e.target.value }))}
-                    className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-amber-500">
-                    {SKILLS.map(s => <option key={s} value={s}>{SKILL_ICONS[s]} {s}</option>)}
-                  </select>
-                  <input type="number" min="1" max="98" placeholder="From"
-                    value={newGoal.current_level}
-                    onChange={e => setNewGoal(g => ({ ...g, current_level: Number(e.target.value) }))}
-                    className="w-16 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-amber-500" />
-                  <input type="number" min="2" max="99" placeholder="To"
-                    value={newGoal.target_level}
-                    onChange={e => setNewGoal(g => ({ ...g, target_level: Number(e.target.value) }))}
-                    className="w-16 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-amber-500" />
+              <div className="mt-4 pt-4 border-t border-gray-800 shrink-0">
+                <p className="text-xs text-gray-400 mb-2">Add New Goal</p>
+                <div className="flex gap-2 flex-wrap items-end">
+                  <div className="flex flex-col">
+                    <label className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Skill</label>
+                    <select value={newGoal.skill} onChange={e => setNewGoal(g => ({ ...g, skill: e.target.value }))}
+                      className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-amber-500 h-8">
+                      {SKILLS.map(s => <option key={s} value={s}>{SKILL_ICONS[s]} {s}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">From Lvl</label>
+                    <input type="number" min="1" max="98" placeholder="1"
+                      value={newGoal.current_level}
+                      onChange={e => setNewGoal(g => ({ ...g, current_level: Number(e.target.value) }))}
+                      className="w-16 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-amber-500 h-8" />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">To Lvl</label>
+                    <input type="number" min="2" max="99" placeholder="10"
+                      value={newGoal.target_level}
+                      onChange={e => setNewGoal(g => ({ ...g, target_level: Number(e.target.value) }))}
+                      className="w-16 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-amber-500 h-8" />
+                  </div>
                   <button onClick={handleAddGoal}
-                    className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-400 px-3 py-1 rounded text-sm transition-colors">
+                    className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-400 px-3 h-8 rounded text-sm transition-colors mt-auto">
                     + Add
                   </button>
                 </div>

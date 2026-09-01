@@ -16,7 +16,7 @@ class CharacterCreate(BaseModel):
 
 class CharacterUpdate(BaseModel):
     name: str | None = None
-    combat_level: int | None = None
+    combat_level: float | None = None
     total_level: int | None = None
     current_gp: int | None = None
     attack: int | None = None
@@ -42,6 +42,7 @@ class CharacterUpdate(BaseModel):
     farming: int | None = None
     construction: int | None = None
     hunter: int | None = None
+    sailing: int | None = None
 
 
 class GoalCreate(BaseModel):
@@ -101,7 +102,9 @@ async def get_character(char_id: int, session: AsyncSession = Depends(get_sessio
     d = char_to_dict(char)
     # Include goals
     goals_result = await session.execute(
-        select(CharacterGoal).where(CharacterGoal.character_id == char_id)
+        select(CharacterGoal)
+        .where(CharacterGoal.character_id == char_id)
+        .order_by(CharacterGoal.order_index, CharacterGoal.id)
     )
     goals = goals_result.scalars().all()
     d['goals'] = [{
@@ -168,8 +171,26 @@ async def add_goal(char_id: int, body: GoalCreate, session: AsyncSession = Depen
     session.add(goal)
     await session.commit()
     await session.refresh(goal)
-    return {'id': goal.id, 'skill': goal.skill, 'current_level': goal.current_level,
             'target_level': goal.target_level, 'completed': goal.completed}
+
+
+class ReorderGoalsBody(BaseModel):
+    goal_ids: list[int]
+
+@router.put('/{char_id}/goals/reorder')
+async def reorder_goals(char_id: int, body: ReorderGoalsBody, session: AsyncSession = Depends(get_session)):
+    goals_result = await session.execute(
+        select(CharacterGoal).where(CharacterGoal.character_id == char_id)
+    )
+    goals = {g.id: g for g in goals_result.scalars().all()}
+    
+    for idx, gid in enumerate(body.goal_ids):
+        if gid in goals:
+            goals[gid].order_index = idx
+            
+    await session.commit()
+    return {'status': 'ok'}
+
 
 
 @router.put('/{char_id}/goals/{goal_id}')
