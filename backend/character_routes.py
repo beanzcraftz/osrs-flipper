@@ -69,14 +69,14 @@ def char_to_dict(c: Character) -> dict:
     return d
 
 
-@router.get('/')
+@router.get('')
 async def list_characters(session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(Character).order_by(Character.slot))
     chars = result.scalars().all()
     return [char_to_dict(c) for c in chars]
 
 
-@router.post('/', status_code=201)
+@router.post('', status_code=201)
 async def create_character(body: CharacterCreate, session: AsyncSession = Depends(get_session)):
     if body.slot not in (1, 2, 3):
         raise HTTPException(400, 'Slot must be 1, 2, or 3')
